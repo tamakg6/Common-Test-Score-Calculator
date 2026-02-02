@@ -91,4 +91,54 @@ def main():
     def calc_weighted(raw1, raw2, is_sum, weight):
         if weight <= 0: return 0.0
         # 合算なら単純足し算、そうでなければ1科目目のみ使用
-        score = (raw1 + raw2) if
+        score = (raw1 + raw2) if is_sum else raw1
+        # 満点基準は合算なら200、単独なら100
+        full_score = 200 if is_sum else 100
+        return (score / full_score) * weight
+
+    calc_math = calc_weighted(raw_m1a, raw_m2bc, is_math_sum, w_math)
+    calc_sci = calc_weighted(raw_sci1, raw_sci2, is_sci_sum, w_sci)
+    calc_geo = calc_weighted(raw_geo1, raw_geo2, is_geo_sum, w_geo)
+
+    total_score = calc_eigo + calc_kokugo + calc_math + calc_sci + calc_geo + calc_joho
+    max_total = w_eigo + w_kokugo + w_math + w_sci + w_geo + w_joho
+
+    # --- 4. 結果表示 ---
+    st.divider()
+    st.header("📊 計算結果")
+    
+    res_c1, res_c2 = st.columns([1, 2])
+    
+    with res_c1:
+        st.metric(label="合計得点", value=f"{total_score:.1f} / {max_total}")
+        if max_total > 0:
+            percent = (total_score / max_total) * 100
+            st.write(f"## 得点率: {percent:.2f}%")
+            st.progress(percent / 100)
+        
+        # 記録保存ボタン
+        if st.button("💾 結果を記録する"):
+            record = {
+                "合計": f"{total_score:.1f}",
+                "率": f"{percent:.1f}%",
+                "英": f"{calc_eigo:.1f}",
+                "数": f"{calc_math:.1f}",
+                "理": f"{calc_sci:.1f}",
+                "社": f"{calc_geo:.1f}"
+            }
+            st.success("記録しました！")
+            st.write(record)
+
+    with res_c2:
+        data = [
+            ["英語", f"{calc_eigo:.1f} / {w_eigo}"],
+            ["国語", f"{calc_kokugo:.1f} / {w_kokugo}"],
+            ["数学", f"{calc_math:.1f} / {w_math}"],
+            ["理科", f"{calc_sci:.1f} / {w_sci}"],
+            ["地歴公民", f"{calc_geo:.1f} / {w_geo}"],
+            ["情報", f"{calc_joho:.1f} / {w_joho}"],
+        ]
+        st.table(pd.DataFrame(data, columns=["科目", "換算得点 / 満点"]))
+
+if __name__ == "__main__":
+    main()
