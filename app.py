@@ -40,14 +40,25 @@ def main():
     
     with set_col1:
         st.markdown("### 🔍 英語の比率設定")
-        # オプションをリストで定義し、エラーを回避
-        ratio_options = [(100, 0), (80, 20), (75, 25), (70, 30), (60, 40), (50, 50)]
-        r_ratio = st.select_slider(
+        
+        # 【修正点】文字列で定義してマッピングする（これでエラー回避）
+        ratio_map = {
+            "Rのみ (100:0)": (100, 0),
+            "4:1 (80:20)": (80, 20),
+            "3:1 (75:25)": (75, 25),
+            "7:3 (70:30)": (70, 30),
+            "3:2 (60:40)": (60, 40),
+            "1:1 (50:50)": (50, 50)
+        }
+        
+        selected_label = st.select_slider(
             "リーディング : リスニング",
-            options=ratio_options,
-            value=ratio_options[-1], # リストの最後 (50, 50) を指定
-            format_func=lambda x: f"{x[0]} : {x[1]}"
+            options=list(ratio_map.keys()), # 選択肢は文字列のリスト
+            value="1:1 (50:50)"           # 初期値も文字列で指定
         )
+        
+        # 選択された文字列から数値（例: 50, 50）を取り出す
+        r_val, l_val = ratio_map[selected_label]
         
         st.markdown("### 🔗 合算設定")
         is_math_sum = st.checkbox("数学を2科目合算する", value=True)
@@ -68,49 +79,16 @@ def main():
             w_joho = st.number_input("情報の満点", 0, 200, 100)
 
     # --- 3. 計算 ---
-    # 英語 (比率を適用してから大学満点へ換算)
-    eigo_combined = (raw_re * r_ratio[0] + raw_li * r_ratio[1]) / 100
-    calc_eigo = (eigo_combined / 100) * w_eigo # 100点ベースから換算
+    # 英語計算ロジック
+    # (R素点 * R比率 + L素点 * L比率) / 100 で「共通テストとしての得点率」を出し、大学満点を掛ける
+    eigo_score_base = (raw_re * r_val + raw_li * l_val) / 100
+    calc_eigo = (eigo_score_base / 100) * w_eigo
     
     calc_kokugo = (raw_kokugo / 200) * w_kokugo
     calc_joho = (raw_joho / 100) * w_joho
 
+    # 合算計算関数
     def calc_weighted(raw1, raw2, is_sum, weight):
-        if weight <= 0: return 0
-        score = (raw1 + raw2) if is_sum else raw1
-        full = 200 if is_sum else 100
-        return (score / full) * weight
-
-    calc_math = calc_weighted(raw_m1a, raw_m2bc, is_math_sum, w_math)
-    calc_sci = calc_weighted(raw_sci1, raw_sci2, is_sci_sum, w_sci)
-    calc_geo = calc_weighted(raw_geo1, raw_geo2, is_geo_sum, w_geo)
-
-    total_score = calc_eigo + calc_kokugo + calc_math + calc_sci + calc_geo + calc_joho
-    max_total = w_eigo + w_kokugo + w_math + w_sci + w_geo + w_joho
-
-    # --- 4. 結果表示 ---
-    st.divider()
-    st.header("📊 計算結果")
-    
-    res_c1, res_c2 = st.columns([1, 2])
-    
-    with res_c1:
-        st.metric(label="合計得点", value=f"{total_score:.1f} / {max_total}")
-        if max_total > 0:
-            percent = (total_score / max_total) * 100
-            st.write(f"## 得点率: {percent:.2f}%")
-            st.progress(percent / 100)
-
-    with res_c2:
-        data = [
-            ["英語", f"{calc_eigo:.1f} / {w_eigo}"],
-            ["国語", f"{calc_kokugo:.1f} / {w_kokugo}"],
-            ["数学", f"{calc_math:.1f} / {w_math}"],
-            ["理科", f"{calc_sci:.1f} / {w_sci}"],
-            ["地歴公民", f"{calc_geo:.1f} / {w_geo}"],
-            ["情報", f"{calc_joho:.1f} / {w_joho}"],
-        ]
-        st.table(pd.DataFrame(data, columns=["科目", "換算得点 / 満点"]))
-
-if __name__ == "__main__":
-    main()
+        if weight <= 0: return 0.0
+        # 合算なら単純足し算、そうでなければ1科目目のみ使用
+        score = (raw1 + raw2) if
